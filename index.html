@@ -188,11 +188,73 @@ function detectMedia(headers){
 
 function cleanCell(v){return v==null?"":String(v).trim()}
 
+function parseRadiusLocation(raw){
+    if(!raw)return null;
+    const s=cleanCell(raw);
+    // Google広告の半径ターゲティング形式： (5km:34.690408:135.187941)
+    const m=s.match(/^\((?:[0-9]+(?:\.[0-9]+)?)km:([-+]?[0-9]+(?:\.[0-9]+)?):([-+]?[0-9]+(?:\.[0-9]+)?)\)$/i);
+    if(!m)return null;
+    const lat=Number(m[1]);
+    const lon=Number(m[2]);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon};
+}
+
 function parseLocationString(raw){
     if(!raw)return "";
+    const radius=parseRadiusLocation(raw);
+    if(radius)return "";
     let s=cleanCell(raw).replace(/,\s*日本$/,"").trim();
     if(!s)return "";
     return s;
+}
+
+async function reverseGeocodeMunicipality(lat,lon){
+    const cacheKey="radiusMunicipality:"+lat.toFixed(6)+":"+lon.toFixed(6);
+    try{
+        const cached=localStorage.getItem(cacheKey);
+        if(cached)return cached;
+    }catch(e){}
+
+    const url="https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon)+"&zoom=10&addressdetails=1&accept-language=ja";
+    try{
+        const response=await fetch(url,{headers:{"Accept":"application/json"}});
+        if(!response.ok)throw new Error("HTTP "+response.status);
+        const data=await response.json();
+        const a=data.address||{};
+
+        // 「市区町村」を優先して取得。神戸市中央区のような政令指定都市は区まで付ける。
+        const prefecture=a.state||a.province||"";
+        const municipality=a.city||a.municipality||a.town||a.village||"";
+        const district=a.city_district || (/区$/.test(a.suburb||"") ? a.suburb : "");
+        let label=municipality;
+        if(district && district!==municipality && !municipality.endsWith(district))label+=district;
+        if(prefecture && label && !label.startsWith(prefecture))label=prefecture+label;
+
+        if(!label){
+            const display=(data.display_name||"").split(",")[0].trim();
+            label=display;
+        }
+        if(label){
+            try{localStorage.setItem(cacheKey,label)}catch(e){}
+            return label;
+        }
+    }catch(e){
+        console.warn("半径設定の中心地域を取得できませんでした",lat,lon,e);
+    }
+    return "";
+}
+
+async function resolveRadiusRegions(radiusLocations){
+    const results=new Map();
+    for(const [key,coords] of radiusLocations){
+        const label=await reverseGeocodeMunicipality(coords.lat,coords.lon);
+        if(label)results.set(key,label);
+        // Nominatimの負荷を抑えるため、未キャッシュの連続問い合わせは少し間隔を空ける。
+        if(results.has(key)===false)continue;
+        await new Promise(resolve=>setTimeout(resolve,1050));
+    }
+    return results;
 }
 
 function translateMatchType(type){
@@ -231,7 +293,7 @@ function getDomain(url){
     try{return new URL(u).hostname}catch(e){return ""}
 }
 
-function processRows(data){
+async function processRows(data){
     if(data.length<=1){alert("有効なデータが見つかりませんでした。");return}
 
     const headers=data[0];
@@ -264,6 +326,7 @@ function processRows(data){
     const campaignUrls={};
     const campaignSchedules={};
     const detectedRegionsSet=new Set();
+    const radiusLocations=new Map();
     let firstGlobalUrl="";
 
     // Yahoo!では「広告」行に最終リンク先URLが入るため、
@@ -295,8 +358,14 @@ function processRows(data){
 
         const rawLocation=locationIdx!==-1?cleanCell(r[locationIdx]):"";
         if(rawLocation){
-            const loc=parseLocationString(rawLocation);
-            if(loc)detectedRegionsSet.add(loc);
+            const radius=parseRadiusLocation(rawLocation);
+            if(radius){
+                const key=radius.lat.toFixed(6)+":"+radius.lon.toFixed(6);
+                radiusLocations.set(key,radius);
+            }else{
+                const loc=parseLocationString(rawLocation);
+                if(loc)detectedRegionsSet.add(loc);
+            }
         }
 
         let rawSchedule=scheduleIdx!==-1?cleanCell(r[scheduleIdx]):"";
@@ -363,6 +432,15 @@ function processRows(data){
             schedule:scheduleVal,
             qualityScore
         });
+    }
+
+    // Google広告の半径設定はCSV上では座標しかないため、中心座標を逆ジオコーディングして
+    // 「兵庫県神戸市中央区」のような市区町村名として検索地域に表示する。
+    if(radiusLocations.size){
+        infoBox.style.display="block";
+        infoBox.textContent="Google広告：半径設定の中心地域を確認しています…";
+        const radiusRegions=await resolveRadiusRegions(radiusLocations);
+        radiusRegions.forEach(label=>detectedRegionsSet.add(label));
     }
 
     detectedRegionsList=Array.from(detectedRegionsSet);
