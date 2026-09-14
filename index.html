@@ -6,36 +6,60 @@
 <title>リスティング広告 検索リンク生成ツール</title>
 <style>
     body{font-family:Arial,"Noto Sans JP",sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#333}
-    .container{max-width:1350px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    .container{max-width:1500px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
     h1{font-size:20px;margin:0 0 20px;color:#1a73e8}
     .media-badge{display:inline-block;margin-left:10px;padding:4px 10px;border-radius:20px;background:#eef4ff;color:#555;font-size:12px;font-weight:bold;vertical-align:middle}
     .setting-box{margin-bottom:15px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .region-select-visible,.region-input-field{width:250px;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:4px;background:#fff;box-sizing:border-box}
+    .region-select-visible,.region-input-field,.business-input{width:250px;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:4px;background:#fff;box-sizing:border-box}
     .region-input-field{width:280px}
+    .business-input{width:280px}
     .btn{background:#1a73e8;color:#fff;border:none;padding:9px 16px;font-size:14px;border-radius:4px;cursor:pointer;font-weight:bold}
     .btn:hover{background:#1557b0}
     .btn-secondary{background:#34a853}.btn-secondary:hover{background:#2e8b57}
     .btn-reset{background:#6b7280}.btn-reset:hover{background:#4b5563}
+    .btn-danger{background:#d93025}.btn-danger:hover{background:#b3261e}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
     #drop-zone{border:2px dashed #1a73e8;padding:40px;text-align:center;background:#f8f9fa;border-radius:6px;cursor:pointer;margin-bottom:20px;transition:background .2s}
     #drop-zone:hover{background:#e8f0fe}
     #file-input{display:none}
     .file-name{margin-top:10px;color:#666;font-size:13px}
     .top-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+    .check-panel{display:none;margin:15px 0;padding:15px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb}
+    .check-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .progress-title{font-weight:bold;margin-bottom:8px}
+    .progress-line{margin:4px 0;font-size:13px}
+    .progress-bar{height:10px;background:#e5e7eb;border-radius:10px;overflow:hidden;margin-top:8px}
+    .progress-fill{height:100%;width:0;background:#1a73e8;transition:width .2s}
+    .current-query{margin-top:8px;font-size:13px;color:#555;word-break:break-all}
+    .extension-status{margin-top:8px;font-size:12px;color:#666}
+    .summary{display:none;margin:15px 0;padding:15px;background:#fff;border:1px solid #ddd;border-radius:6px}
+    .summary-grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+    .summary-card{padding:12px;background:#f8f9fa;border-radius:5px}
+    .summary-card h3{font-size:14px;margin:0 0 8px}
+    .summary-card div{font-size:13px;line-height:1.7}
+    .improvement{margin-top:12px;padding:10px 12px;background:#fff7e6;border-radius:5px;font-weight:bold}
     table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14px}
-    th,td{border:1px solid #ddd;padding:10px;text-align:left}
+    th,td{border:1px solid #ddd;padding:10px;text-align:left;vertical-align:top}
     th{background:#f1f3f4;cursor:pointer;user-select:none;transition:background .2s}
     th:hover{background:#e2e8f0}
     th.sortable::after{content:" ↕";font-size:11px;color:#888}
     a.search-link{color:#1a73e8;text-decoration:none;font-weight:bold;white-space:nowrap}
     a.search-link:hover{text-decoration:underline}
     .count-info{margin-top:10px;font-weight:bold;color:#555}
+    .check-target-info{margin-top:6px;font-size:12px;color:#666}
     .center-text{text-align:center}
     .info-box{margin-top:15px;padding:10px 14px;background:#f8f9fa;border-radius:5px;font-size:13px;color:#555}
-    @media(max-width:800px){
+    .status-match{color:#188038;font-weight:bold}
+    .status-mismatch{color:#d93025;font-weight:bold}
+    .status-none{color:#777;font-weight:bold}
+    .status-unknown{color:#e37400;font-weight:bold}
+    .ad-domains{line-height:1.5;word-break:break-word}.domain-details{display:inline-block}.domain-details summary{cursor:pointer;color:#1a73e8;font-weight:bold;user-select:none}.domain-details summary:hover{text-decoration:underline}.domain-list{margin-top:6px;padding:7px 10px;background:#f8f9fa;border-radius:4px;line-height:1.5;word-break:break-word}
+    @media(max-width:900px){
         body{padding:10px}.container{padding:15px;overflow-x:auto}
         .setting-box{align-items:flex-start;flex-direction:column}
-        .region-select-visible,.region-input-field{width:100%}
+        .region-select-visible,.region-input-field,.business-input{width:100%}
         .top-actions{margin-left:0}
+        .summary-grid{grid-template-columns:1fr}
     }
 </style>
 </head>
@@ -49,7 +73,11 @@
             <option value="">-- 設定された地域から選択 --</option>
         </select>
         <input type="text" id="regionInput" class="region-input-field" placeholder="自由記入（優先）" oninput="updateSearchLinks()">
+        <label for="businessName"><strong>屋号名：</strong></label>
+        <input type="text" id="businessName" class="business-input" placeholder="任意入力">
         <div class="top-actions">
+            <button type="button" class="btn btn-danger" id="checkStopBtn" onclick="stopAdCheck()" style="display:none">■ チェック停止</button>
+            <button type="button" class="btn" id="checkStartBtn" onclick="startAdCheck()" style="display:none">▶ 広告表示を一括チェック</button>
             <button type="button" class="btn btn-reset" id="resetBtn" onclick="resetTool()" style="display:none">↻ 別のファイルを読み込む</button>
             <button type="button" class="btn btn-secondary" id="exportBtn" onclick="exportMobileHtml()" style="display:none">📱 スマホ用HTMLとして保存</button>
         </div>
@@ -65,7 +93,31 @@
     </div>
 
     <div class="count-info" id="countInfo"></div>
+    <div class="check-target-info" id="checkTargetInfo"></div>
     <div id="infoBox" class="info-box" style="display:none"></div>
+
+    <div id="checkPanel" class="check-panel">
+        <div class="progress-title">広告表示チェック中……</div>
+        <div class="progress-line">通常検索：<strong id="normalProgress">0 / 0 件</strong></div>
+        <div class="progress-line" id="brandProgressLine" style="display:none">屋号名入り検索：<strong id="brandProgress">0 / 0 件</strong></div>
+        <div class="current-query" id="currentQuery"></div>
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <div class="extension-status" id="extensionStatus">Chrome拡張機能に接続しています…</div>
+    </div>
+
+    <div id="summary" class="summary">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>通常検索</h3>
+                <div id="normalSummary"></div>
+            </div>
+            <div class="summary-card" id="brandSummaryCard" style="display:none">
+                <h3>屋号名入り検索</h3>
+                <div id="brandSummary"></div>
+            </div>
+        </div>
+        <div class="improvement" id="improvementSummary" style="display:none"></div>
+    </div>
 
     <table id="resultTable">
         <thead id="tableHead">
@@ -78,11 +130,17 @@
                 <th class="sortable" onclick="sortTable(5,'string')">ランディング先ドメイン</th>
                 <th class="sortable" style="width:150px" onclick="sortTable(6,'string')">配信スケジュール</th>
                 <th id="qualityHeader" class="sortable center-text" style="width:90px" onclick="sortTable(7,'number')">品質スコア</th>
+                <th id="normalResultHeader" class="sortable" onclick="sortTable(8,'string')">通常検索</th>
+                <th id="normalDomainHeader" class="sortable" onclick="sortTable(9,'string')">通常広告ドメイン</th>
+                <th id="normalStatusHeader" class="sortable" onclick="sortTable(10,'string')">通常判定</th>
+                <th id="brandResultHeader" class="sortable" onclick="sortTable(11,'string')" style="display:none">屋号名検索</th>
+                <th id="brandDomainHeader" class="sortable" onclick="sortTable(12,'string')" style="display:none">屋号名広告ドメイン</th>
+                <th id="brandStatusHeader" class="sortable" onclick="sortTable(13,'string')" style="display:none">屋号名判定</th>
                 <th style="width:120px">アクション</th>
             </tr>
         </thead>
         <tbody id="tbody">
-            <tr><td colspan="9" style="text-align:center;color:#888">ファイルが読み込まれていません</td></tr>
+            <tr><td colspan="15" style="text-align:center;color:#888">ファイルが読み込まれていません</td></tr>
         </tbody>
     </table>
 </div>
@@ -92,19 +150,43 @@ const dropZone=document.getElementById("drop-zone");
 const fileInput=document.getElementById("file-input");
 const regionSelect=document.getElementById("regionSelect");
 const regionInput=document.getElementById("regionInput");
+const businessName=document.getElementById("businessName");
 const tbody=document.getElementById("tbody");
 const countInfo=document.getElementById("countInfo");
+const checkTargetInfo=document.getElementById("checkTargetInfo");
 const exportBtn=document.getElementById("exportBtn");
 const resetBtn=document.getElementById("resetBtn");
+const checkStartBtn=document.getElementById("checkStartBtn");
+const checkStopBtn=document.getElementById("checkStopBtn");
 const qualityHeader=document.getElementById("qualityHeader");
 const mediaBadge=document.getElementById("mediaBadge");
 const infoBox=document.getElementById("infoBox");
 const fileName=document.getElementById("fileName");
+const checkPanel=document.getElementById("checkPanel");
+const normalProgress=document.getElementById("normalProgress");
+const brandProgress=document.getElementById("brandProgress");
+const brandProgressLine=document.getElementById("brandProgressLine");
+const currentQuery=document.getElementById("currentQuery");
+const extensionStatus=document.getElementById("extensionStatus");
+const progressFill=document.getElementById("progressFill");
+const summary=document.getElementById("summary");
+const normalSummary=document.getElementById("normalSummary");
+const brandSummary=document.getElementById("brandSummary");
+const brandSummaryCard=document.getElementById("brandSummaryCard");
+const improvementSummary=document.getElementById("improvementSummary");
 
 let tableData=[];
 let detectedRegionsList=[];
 let currentMedia="Google";
 let sortDirections={};
+let checkRunning=false;
+let checkStartedAt=0;
+let checkTotal=0;
+let checkNormalDone=0;
+let checkTargetIndices=[];
+let checkBrandDone=0;
+
+const resultHeaderIds=["normalResultHeader","normalDomainHeader","normalStatusHeader","brandResultHeader","brandDomainHeader","brandStatusHeader"];
 
 dropZone.addEventListener("click",e=>{if(e.target!==fileInput)fileInput.click()});
 dropZone.addEventListener("dragover",e=>{e.preventDefault();dropZone.style.background="#e8f0fe"});
@@ -115,6 +197,22 @@ dropZone.addEventListener("drop",e=>{
 });
 fileInput.addEventListener("change",e=>{
     if(e.target.files&&e.target.files.length)handleFile(e.target.files[0]);
+});
+
+window.addEventListener("message",e=>{
+    if(!e.data||e.data.source!=="listing-ad-checker-extension")return;
+    const msg=e.data;
+    if(msg.type==="EXTENSION_STATUS"){
+        extensionStatus.textContent=msg.message||"Chrome拡張機能に接続しました。";
+    }else if(msg.type==="CHECK_RESULT"){
+        receiveCheckResult(msg.payload||{});
+    }else if(msg.type==="CHECK_ERROR"){
+        receiveCheckError(msg.payload||{});
+    }else if(msg.type==="CHECK_FINISHED"){
+        finishAdCheck();
+    }else if(msg.type==="CHECK_STOPPED"){
+        finishAdCheck(true);
+    }
 });
 
 function handleFile(file){
@@ -186,18 +284,14 @@ function detectMedia(headers){
     return "Google";
 }
 
-function cleanCell(v){
-    return v==null?"":String(v).trim();
-}
+function cleanCell(v){return v==null?"":String(v).trim()}
 
 function parseRadiusLocation(raw){
     if(!raw)return null;
     const s=cleanCell(raw);
-    // Google広告の半径ターゲティング形式： (5km:34.690408:135.187941)
     const m=s.match(/^\((?:[0-9]+(?:\.[0-9]+)?)km:([-+]?[0-9]+(?:\.[0-9]+)?):([-+]?[0-9]+(?:\.[0-9]+)?)\)$/i);
     if(!m)return null;
-    const lat=Number(m[1]);
-    const lon=Number(m[2]);
+    const lat=Number(m[1]),lon=Number(m[2]);
     if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
     return {lat,lon};
 }
@@ -213,37 +307,22 @@ function parseLocationString(raw){
 
 async function reverseGeocodeMunicipality(lat,lon){
     const cacheKey="radiusMunicipality:"+lat.toFixed(6)+":"+lon.toFixed(6);
-    try{
-        const cached=localStorage.getItem(cacheKey);
-        if(cached)return cached;
-    }catch(e){}
-
+    try{const cached=localStorage.getItem(cacheKey);if(cached)return cached}catch(e){}
     const url="https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon)+"&zoom=10&addressdetails=1&accept-language=ja";
     try{
         const response=await fetch(url,{headers:{"Accept":"application/json"}});
         if(!response.ok)throw new Error("HTTP "+response.status);
         const data=await response.json();
         const a=data.address||{};
-
-        // 「市区町村」を優先して取得。神戸市中央区のような政令指定都市は区まで付ける。
         const prefecture=a.state||a.province||"";
         const municipality=a.city||a.municipality||a.town||a.village||"";
         const district=a.city_district || (/区$/.test(a.suburb||"") ? a.suburb : "");
         let label=municipality;
-        if(district && district!==municipality && !municipality.endsWith(district))label+=district;
-        if(prefecture && label && !label.startsWith(prefecture))label=prefecture+label;
-
-        if(!label){
-            const display=(data.display_name||"").split(",")[0].trim();
-            label=display;
-        }
-        if(label){
-            try{localStorage.setItem(cacheKey,label)}catch(e){}
-            return label;
-        }
-    }catch(e){
-        console.warn("半径設定の中心地域を取得できませんでした",lat,lon,e);
-    }
+        if(district&&district!==municipality&&!municipality.endsWith(district))label+=district;
+        if(prefecture&&label&&!label.startsWith(prefecture))label=prefecture+label;
+        if(!label)label=(data.display_name||"").split(",")[0].trim();
+        if(label){try{localStorage.setItem(cacheKey,label)}catch(e){}return label}
+    }catch(e){console.warn("半径設定の中心地域を取得できませんでした",lat,lon,e)}
     return "";
 }
 
@@ -252,9 +331,7 @@ async function resolveRadiusRegions(radiusLocations){
     for(const [key,coords] of radiusLocations){
         const label=await reverseGeocodeMunicipality(coords.lat,coords.lon);
         if(label)results.set(key,label);
-        // Nominatimの負荷を抑えるため、未キャッシュの連続問い合わせは少し間隔を空ける。
-        if(results.has(key)===false)continue;
-        await new Promise(resolve=>setTimeout(resolve,1050));
+        if(results.has(key))await new Promise(resolve=>setTimeout(resolve,1050));
     }
     return results;
 }
@@ -268,73 +345,22 @@ function translateMatchType(type){
     return cleanCell(type);
 }
 
-/*
- * 配信スケジュールを表示用に整形
- *
- * Google広告のCSVでは、スケジュール欄に
- * [] やスケジュール以外の情報が混在する場合があるため、
- * 実際の「曜日＋時間帯」だけを表示する。
- *
- * スケジュール設定がない場合は必ず「24時間配信」。
- */
+/* スケジュールは既存仕様を維持。ただしCSVの [] / [Monday...] の外側記号は表示しない。 */
 function formatSchedule(raw){
     let s=cleanCell(raw);
+    if(!s||s==="[]"||s==="[ ]")return "24時間配信";
 
-    // 空欄、[]、[ ]など
-    if(!s||/^\[\s*\]$/.test(s))return "24時間配信";
+    s=s.replace(/^\s*\[\s*/,"").replace(/\s*\]\s*$/,"").trim();
+    if(!s)return "24時間配信";
 
-    // 「24時間配信」が含まれている場合、
-    // それ以外の不要な情報は表示しない。
-    if(s.includes("24時間配信")||/^\[\s*\]$/.test(s)){
-        return "24時間配信";
+    if(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].every(d=>s.includes(d))){
+        const m=s.match(/\[([0-9:]+-[0-9:]+)\]/);
+        if(m)return "月〜日 "+m[1];
     }
 
-    // []だけでなく、[]の中身や余計な括弧を除去して扱う
-    s=s.replace(/\[/g,"").replace(/\]/g,"").trim();
-
-    // Googleの正式な曜日名が含まれているか確認
-    const dayPattern=/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/;
-    const timePattern=/[0-9]{1,2}:[0-9]{2}\s*-\s*[0-9]{1,2}:[0-9]{2}/;
-
-    // 曜日も時間帯もないものはスケジュールではないため24時間配信
-    if(!dayPattern.test(s)||!timePattern.test(s)){
-        return "24時間配信";
-    }
-
-    /*
-     * 全曜日が同じ時間帯の場合
-     * Monday...Sunday [10:00-18:00]
-     * → 月〜日 10:00-18:00
-     */
-    const allDays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-
-    if(allDays.every(d=>s.includes(d))){
-        const m=s.match(/([0-9]{1,2}:[0-9]{2}\s*-\s*[0-9]{1,2}:[0-9]{2})/);
-        if(m)return "月〜日 "+m[1].replace(/\s*-\s*/g,"-");
-    }
-
-    // 曜日名を日本語へ変換
-    s=s.replace(/Monday/g,"月")
-       .replace(/Tuesday/g,"火")
-       .replace(/Wednesday/g,"水")
-       .replace(/Thursday/g,"木")
-       .replace(/Friday/g,"金")
-       .replace(/Saturday/g,"土")
-       .replace(/Sunday/g,"日");
-
-    // 不要な括弧・セミコロンを整理
-    s=s.replace(/[()]/g,"")
-       .replace(/;/g," / ")
-       .replace(/\s{2,}/g," ")
-       .trim();
-
-    // 余計な「 / 」が連続している場合を整理
-    s=s.replace(/\s*\/\s*/g," / ").trim();
-
-    // 最終的に曜日＋時間帯が残っているか再確認
-    if(!/[月火水木金土日]/.test(s)||!/[0-9]{1,2}:[0-9]{2}\s*-\s*[0-9]{1,2}:[0-9]{2}/.test(s)){
-        return "24時間配信";
-    }
+    s=s.replace(/Monday/g,"月").replace(/Tuesday/g,"火").replace(/Wednesday/g,"水")
+       .replace(/Thursday/g,"木").replace(/Friday/g,"金").replace(/Saturday/g,"土")
+       .replace(/Sunday/g,"日").replace(/[()[\]]/g,"").replace(/;/g," / ").trim();
 
     return s||"24時間配信";
 }
@@ -350,141 +376,82 @@ function normalizeUrl(raw){
 function getDomain(url){
     const u=normalizeUrl(url);
     if(!u)return "";
-    try{return new URL(u).hostname}catch(e){return ""}
+    try{return new URL(u).hostname.replace(/^www\./i,"").toLowerCase()}catch(e){return ""}
 }
 
 async function processRows(data){
-    if(data.length<=1){
-        alert("有効なデータが見つかりませんでした。");
-        return;
-    }
+    if(data.length<=1){alert("有効なデータが見つかりませんでした。");return}
 
     const headers=data[0];
     currentMedia=detectMedia(headers);
-
     mediaBadge.style.display="inline-block";
     mediaBadge.textContent=currentMedia==="Yahoo"?"Yahoo!広告":"Google広告";
 
-    if(currentMedia==="Yahoo"){
-        qualityHeader.style.display="none";
-    }else{
-        qualityHeader.style.display="table-cell";
-    }
+    qualityHeader.style.display=currentMedia==="Yahoo"?"none":"table-cell";
 
     const campaignIdx=findColumnIndex(headers,["Campaign","キャンペーン","キャンペーン名"]);
     const adGroupIdx=findColumnIndex(headers,["Ad Group","広告グループ","広告グループ名"]);
     const keywordIdx=findColumnIndex(headers,["Keyword","キーワード","キーワード名"]);
     const searchThemeIdx=findColumnIndex(headers,["Search theme","検索テーマ"]);
     const matchTypeIdx=findColumnIndex(headers,["Criterion Type","マッチタイプ","種別"]);
-    const finalUrlIdx=findColumnIndex(headers,[
-        "Final URL","最終ページ URL","最終URL","最終ページURL",
-        "最終リンク先URL","最終リンク先 URL"
-    ]);
+    const finalUrlIdx=findColumnIndex(headers,["Final URL","最終ページ URL","最終URL","最終ページURL","最終リンク先URL","最終リンク先 URL"]);
     const linkUrlIdx=findColumnIndex(headers,["リンク先URL","リンク先 URL","Destination URL"]);
     const qualityScoreIdx=findColumnIndex(headers,["Quality score","品質スコア"]);
     const locationIdx=findColumnIndex(headers,["Location","地域","地域名","配信地域"]);
-    const scheduleIdx=findColumnIndex(headers,[
-        "Ad schedule",
-        "ad schedule",
-        "スケジュール",
-        "曜日・時間帯",
-        "曜日",
-        "時間帯",
-        "配信スケジュール"
-    ]);
+    const scheduleIdx=findColumnIndex(headers,["Ad schedule","ad schedule","スケジュール","曜日・時間帯","曜日","時間帯","配信スケジュール"]);
+    const componentIdx=findColumnIndex(headers,["コンポーネントの種類"]);
 
-    const adGroupUrls={};
-    const campaignUrls={};
-    const campaignSchedules={};
-    const detectedRegionsSet=new Set();
-    const radiusLocations=new Map();
+    const adGroupUrls={},campaignUrls={},campaignSchedules={};
+    const detectedRegionsSet=new Set(),radiusLocations=new Map();
     let firstGlobalUrl="";
 
-    // Yahoo!では「広告」行に最終リンク先URLが入るため、
-    // キーワード行へのURL継承をキャンペーン/広告グループ単位で行う。
     for(let i=1;i<data.length;i++){
         const r=data[i];
         if(r.length<=1)continue;
 
         const campaign=campaignIdx!==-1?cleanCell(r[campaignIdx]):"";
         const adGroup=adGroupIdx!==-1?cleanCell(r[adGroupIdx]):"";
-        const componentIdx=findColumnIndex(headers,["コンポーネントの種類"]);
         const component=componentIdx!==-1?cleanCell(r[componentIdx]):"";
 
         let url="";
         if(finalUrlIdx!==-1)url=normalizeUrl(r[finalUrlIdx]);
         if(!url&&linkUrlIdx!==-1)url=normalizeUrl(r[linkUrlIdx]);
 
-        // 「広告」などのURLを優先。クイックリンク等は同じキャンペーンでも
-        // 最終ドメインを上書きしない。
-        const isMainAd=currentMedia==="Yahoo"
-            ? (component==="広告"||component==="キーワード"||component==="")
-            : true;
-
+        const isMainAd=currentMedia==="Yahoo"?(component==="広告"||component==="キーワード"||component===""):true;
         if(url&&isMainAd){
-            if(campaign&&adGroup&&!adGroupUrls[campaign+"___"+adGroup]){
-                adGroupUrls[campaign+"___"+adGroup]=url;
-            }
-            if(campaign&&!campaignUrls[campaign]){
-                campaignUrls[campaign]=url;
-            }
+            if(campaign&&adGroup&&!adGroupUrls[campaign+"___"+adGroup])adGroupUrls[campaign+"___"+adGroup]=url;
+            if(campaign&&!campaignUrls[campaign])campaignUrls[campaign]=url;
             if(!firstGlobalUrl)firstGlobalUrl=url;
         }
 
         const rawLocation=locationIdx!==-1?cleanCell(r[locationIdx]):"";
         if(rawLocation){
             const radius=parseRadiusLocation(rawLocation);
-            if(radius){
-                const key=radius.lat.toFixed(6)+":"+radius.lon.toFixed(6);
-                radiusLocations.set(key,radius);
-            }else{
+            if(radius)radiusLocations.set(radius.lat.toFixed(6)+":"+radius.lon.toFixed(6),radius);
+            else{
                 const loc=parseLocationString(rawLocation);
                 if(loc)detectedRegionsSet.add(loc);
             }
         }
 
         let rawSchedule=scheduleIdx!==-1?cleanCell(r[scheduleIdx]):"";
-
-        // Googleの別形式スケジュール探索
         if(!rawSchedule&&currentMedia==="Google"){
             for(const cell of r){
                 const c=cleanCell(cell);
-                if(
-                    c&&
-                    /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(c)&&
-                    /[0-9]{1,2}:[0-9]{2}\s*-\s*[0-9]{1,2}:[0-9]{2}/.test(c)
-                ){
-                    rawSchedule=c;
-                    break;
-                }
+                if(c&&/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(c)&&c.includes("-")){rawSchedule=c;break}
             }
         }
 
         if(campaign){
             const formatted=formatSchedule(rawSchedule);
-
-            if(!campaignSchedules[campaign]){
-                campaignSchedules[campaign]=formatted;
-            }else if(
-                formatted!=="24時間配信"&&
-                !campaignSchedules[campaign].includes(formatted)
-            ){
+            if(!campaignSchedules[campaign])campaignSchedules[campaign]=formatted;
+            else if(formatted!=="24時間配信"&&!campaignSchedules[campaign].includes(formatted))
                 campaignSchedules[campaign]+=" / "+formatted;
-            }
         }
     }
 
     tableData=[];
-    const invalidKeywords=[
-        "off",
-        "on",
-        "enabled",
-        "paused",
-        "有効",
-        "一時停止",
-        "削除済み",
-        "removed"
-    ];
+    const invalidKeywords=["off","on","enabled","paused","有効","一時停止","削除済み","removed"];
 
     for(let i=1;i<data.length;i++){
         const r=data[i];
@@ -495,71 +462,43 @@ async function processRows(data){
         const keyword=keywordIdx!==-1?cleanCell(r[keywordIdx]):"";
         const searchTheme=searchThemeIdx!==-1?cleanCell(r[searchThemeIdx]):"";
         const matchType=matchTypeIdx!==-1?cleanCell(r[matchTypeIdx]):"-";
-
         let targetUrl=finalUrlIdx!==-1?normalizeUrl(r[finalUrlIdx]):"";
-        if(!targetUrl&&linkUrlIdx!==-1){
-            targetUrl=normalizeUrl(r[linkUrlIdx]);
-        }
-
+        if(!targetUrl&&linkUrlIdx!==-1)targetUrl=normalizeUrl(r[linkUrlIdx]);
         const qualityScore=qualityScoreIdx!==-1?cleanCell(r[qualityScoreIdx]):"";
         let rowSchedule=scheduleIdx!==-1?cleanCell(r[scheduleIdx]):"";
 
         if(!keyword||invalidKeywords.includes(keyword.toLowerCase()))continue;
         if(searchTheme)continue;
 
-        if(!targetUrl&&campaign&&adGroup){
-            targetUrl=adGroupUrls[campaign+"___"+adGroup]||"";
-        }
-
-        if(!targetUrl&&campaign){
-            targetUrl=campaignUrls[campaign]||"";
-        }
-
-        if(!targetUrl){
-            targetUrl=firstGlobalUrl;
-        }
+        if(!targetUrl&&campaign&&adGroup)targetUrl=adGroupUrls[campaign+"___"+adGroup]||"";
+        if(!targetUrl&&campaign)targetUrl=campaignUrls[campaign]||"";
+        if(!targetUrl)targetUrl=firstGlobalUrl;
 
         if(!rowSchedule&&currentMedia==="Google"){
             for(const cell of r){
                 const c=cleanCell(cell);
-                if(
-                    c&&
-                    /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(c)&&
-                    /[0-9]{1,2}:[0-9]{2}\s*-\s*[0-9]{1,2}:[0-9]{2}/.test(c)
-                ){
-                    rowSchedule=c;
-                    break;
-                }
+                if(c&&/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/.test(c)&&c.includes("-")){rowSchedule=c;break}
             }
         }
 
         let scheduleVal=rowSchedule?formatSchedule(rowSchedule):"";
-
-        if(!scheduleVal&&campaign&&campaignSchedules[campaign]){
-            scheduleVal=campaignSchedules[campaign];
-        }
-
-        if(!scheduleVal){
-            scheduleVal="24時間配信";
-        }
+        if(!scheduleVal&&campaign&&campaignSchedules[campaign])scheduleVal=campaignSchedules[campaign];
+        if(!scheduleVal)scheduleVal="24時間配信";
 
         tableData.push({
-            campaign,
-            adGroup,
-            keyword,
+            campaign,adGroup,keyword,
             matchType:translateMatchType(matchType),
             domain:getDomain(targetUrl),
             schedule:scheduleVal,
-            qualityScore
+            qualityScore,
+            normal:{search:"未確認",domains:[],status:"unknown"},
+            brand:{search:"未実行",domains:[],status:"notrun"}
         });
     }
 
-    // Google広告の半径設定はCSV上では座標しかないため、中心座標を逆ジオコーディングして
-    // 「兵庫県神戸市中央区」のような市区町村名として検索地域に表示する。
     if(radiusLocations.size){
         infoBox.style.display="block";
         infoBox.textContent="Google広告：半径設定の中心地域を確認しています…";
-
         const radiusRegions=await resolveRadiusRegions(radiusLocations);
         radiusRegions.forEach(label=>detectedRegionsSet.add(label));
     }
@@ -569,46 +508,34 @@ async function processRows(data){
 
     if(detectedRegionsList.length){
         const placeholder=document.createElement("option");
-        placeholder.value="";
-        placeholder.textContent="-- 設定された地域から選択 --";
+        placeholder.value="";placeholder.textContent="-- 設定された地域から選択 --";
         regionSelect.appendChild(placeholder);
-
         detectedRegionsList.forEach(reg=>{
             const opt=document.createElement("option");
-            opt.value=reg;
-            opt.textContent=reg;
-            regionSelect.appendChild(opt);
+            opt.value=reg;opt.textContent=reg;regionSelect.appendChild(opt);
         });
-
         regionSelect.value=detectedRegionsList[0];
-
-        // 地域設定がある場合は「地域設定なし」の注意文を絶対に出さない
         infoBox.style.display="none";
-
     }else if(currentMedia==="Yahoo"){
         const opt=document.createElement("option");
-        opt.value="";
-        opt.textContent="日本全国（地域指定なし）";
-        regionSelect.appendChild(opt);
-        regionSelect.value="";
-
+        opt.value="";opt.textContent="日本全国（地域指定なし）";
+        regionSelect.appendChild(opt);regionSelect.value="";
         infoBox.style.display="block";
         infoBox.textContent="Yahoo!広告：地域指定がないため、日本全国を対象として検索リンクを生成します。";
-
     }else{
         const opt=document.createElement("option");
-        opt.value="";
-        opt.textContent="地域指定なし";
-        regionSelect.appendChild(opt);
-        regionSelect.value="";
+        opt.value="";opt.textContent="地域指定なし";
+        regionSelect.appendChild(opt);regionSelect.value="";
         infoBox.style.display="none";
     }
 
     regionInput.value="";
     exportBtn.style.display="inline-block";
     resetBtn.style.display="inline-block";
+    checkStartBtn.style.display="inline-block";
     dropZone.style.display="none";
     sortDirections={};
+    summary.style.display="none";
     renderTable();
 }
 
@@ -618,31 +545,54 @@ function getActiveRegion(){
     return regionSelect.value.trim();
 }
 
-function generateSearchUrl(keyword,region){
-    // 「日本全国（地域指定なし）」は検索語に入れない。
-    const query=region?keyword+" "+region+" test":keyword+" test";
-
-    if(currentMedia==="Yahoo"){
+function generateSearchUrl(keyword,region,brand=""){
+    const parts=[keyword,region,brand].filter(Boolean);
+    const query=parts.join(" ")+" test";
+    if(currentMedia==="Yahoo")
         return "https://search.yahoo.co.jp/search?p="+encodeURIComponent(query);
-    }
-
     return "https://www.google.com/search?q="+encodeURIComponent(query)+"&gl=jp&hl=ja&pws=0";
+}
+
+function getSearchQuery(keyword,brand=""){
+    const region=getActiveRegion();
+    return [keyword,region,brand].filter(Boolean).join(" ")+" test";
+}
+
+function statusLabel(status){
+    if(status==="excluded")return '<span style="color:#999;font-weight:bold">対象外</span>';
+    if(status==="match")return '<span class="status-match">🟢 一致</span>';
+    if(status==="mismatch")return '<span class="status-mismatch">🔴 不一致</span>';
+    if(status==="none")return '<span class="status-none">⚪ 広告なし</span>';
+    if(status==="unknown")return '<span class="status-unknown">🟠 要確認</span>';
+    return '<span class="status-none">―</span>';
 }
 
 function renderTable(){
     const currentRegion=getActiveRegion();
+    const targetSet=getCheckTargetSet();
+    const hasBrand=businessName.value.trim()!=="";
+    document.getElementById("brandResultHeader").style.display=hasBrand?"table-cell":"none";
+    document.getElementById("brandDomainHeader").style.display=hasBrand?"table-cell":"none";
+    document.getElementById("brandStatusHeader").style.display=hasBrand?"table-cell":"none";
 
     if(!tableData.length){
-        tbody.innerHTML='<tr><td colspan="'+(currentMedia==="Yahoo"?8:9)+'" style="text-align:center;color:#888">有効なキーワードデータが見つかりませんでした</td></tr>';
+        tbody.innerHTML='<tr><td colspan="15" style="text-align:center;color:#888">有効なキーワードデータが見つかりませんでした</td></tr>';
         countInfo.textContent="抽出された件数: 0 件";
+        checkTargetInfo.textContent="";
         return;
     }
 
     let html="";
-
     tableData.forEach((item,index)=>{
-        const searchUrl=generateSearchUrl(item.keyword,currentRegion);
-
+        const normalUrl=generateSearchUrl(item.keyword,currentRegion,"");
+        const brandUrl=hasBrand?generateSearchUrl(item.keyword,currentRegion,businessName.value.trim()):"";
+        const searchUrl=(item.normal.status==="match"||!hasBrand||item.brand.status!=="match")?normalUrl:brandUrl;
+        const makeDomainDetails=(domains)=>{
+            if(!domains.length)return "―";
+            return '<details class="domain-details"><summary>表示（'+domains.length+'件）</summary><div class="domain-list">'+domains.map(escapeHtml).join("<br>")+'</div></details>';
+        };
+        const normalDomains=makeDomainDetails(item.normal.domains);
+        const brandDomains=makeDomainDetails(item.brand.domains);
         html+="<tr>";
         html+="<td>"+(index+1)+"</td>";
         html+="<td>"+escapeHtml(item.campaign)+"</td>";
@@ -651,174 +601,306 @@ function renderTable(){
         html+="<td>"+escapeHtml(item.matchType)+"</td>";
         html+="<td>"+escapeHtml(item.domain)+"</td>";
         html+="<td>"+escapeHtml(item.schedule)+"</td>";
-
-        if(currentMedia!=="Yahoo"){
-            html+='<td class="center-text">'+escapeHtml(item.qualityScore)+"</td>";
+        if(currentMedia!=="Yahoo")html+='<td class="center-text">'+escapeHtml(item.qualityScore)+"</td>";
+        html+='<td>'+escapeHtml(item.normal.search||"未確認")+"</td>";
+        html+='<td class="ad-domains">'+normalDomains+"</td>";
+        html+="<td>"+statusLabel(item.normal.status)+"</td>";
+        if(hasBrand){
+            html+='<td>'+escapeHtml(item.brand.search||"未実行")+"</td>";
+            html+='<td class="ad-domains">'+brandDomains+"</td>";
+            html+="<td>"+statusLabel(item.brand.status)+"</td>";
         }
-
         html+='<td><a href="'+searchUrl+'" target="_blank" rel="noopener noreferrer" class="search-link">検索リンクを開く</a></td>';
         html+="</tr>";
     });
-
     tbody.innerHTML=html;
 
     const regionDisplay=currentRegion||(currentMedia==="Yahoo"?"日本全国":"地域指定なし");
+    countInfo.textContent="抽出された件数: "+tableData.length+" 件（設定地域: "+regionDisplay+"）";
+    if(tableData.length>20){
+        const modeText=currentMedia==="Google"?"Google：品質スコア上位を優先、残りは検索されやすさで補完":"Yahoo!：検索されやすさを推定して上位";
+        checkTargetInfo.textContent="広告表示チェック対象：最大20キーワード（"+modeText+"）";
+    }else{
+        checkTargetInfo.textContent="広告表示チェック対象：全"+tableData.length+"キーワード";
+    }
+}
 
-    countInfo.textContent=
-        "抽出された件数: "+
-        tableData.length+
-        " 件（設定地域: "+
-        regionDisplay+
-        "）";
+function normalizeKeywordForRanking(keyword){
+    return String(keyword||"").toLowerCase().replace(/[\s　]+/g," ").trim();
+}
+
+function keywordVolumeProxy(item, duplicateCount=1){
+    const kw=normalizeKeywordForRanking(item.keyword);
+    const chars=kw.replace(/[\s　]/g,"").length;
+    const words=kw?kw.split(" ").length:99;
+    const mt=String(item.matchType||"");
+    // 実際の月間検索数ではなく、CSV内の情報だけで「検索されやすそう」を推定するスコア。
+    // 短く一般的な語、同一キーワードの複数登録、インテントマッチをやや優先する。
+    let score=0;
+    score += Math.max(0, 30-chars)*4;
+    score += Math.max(0, 8-words)*12;
+    score += Math.min(duplicateCount,10)*20;
+    if(mt.includes("インテント")||mt.includes("BROAD")||mt.includes("Broad"))score+=15;
+    else if(mt.includes("フレーズ")||mt.includes("PHRASE")||mt.includes("Phrase"))score+=7;
+    return score;
+}
+
+function selectCheckTargets(){
+    const limit=Math.min(20,tableData.length);
+    if(limit===0)return [];
+
+    const freq=new Map();
+    tableData.forEach(item=>{
+        const k=normalizeKeywordForRanking(item.keyword);
+        freq.set(k,(freq.get(k)||0)+1);
+    });
+
+    const scored=tableData.map((item,index)=>({
+        item,index,
+        qs:parseFloat(String(item.qualityScore||"").replace(/[^0-9.]/g,"")),
+        volumeScore:keywordVolumeProxy(item,freq.get(normalizeKeywordForRanking(item.keyword))||1)
+    }));
+
+    if(currentMedia==="Google"){
+        const withQs=scored.filter(x=>Number.isFinite(x.qs));
+        const withoutQs=scored.filter(x=>!Number.isFinite(x.qs));
+        withQs.sort((a,b)=>b.qs-a.qs||b.volumeScore-a.volumeScore||a.index-b.index);
+        withoutQs.sort((a,b)=>b.volumeScore-a.volumeScore||a.index-b.index);
+        return withQs.concat(withoutQs).slice(0,limit).map(x=>x.index);
+    }
+
+    scored.sort((a,b)=>b.volumeScore-a.volumeScore||a.index-b.index);
+    return scored.slice(0,limit).map(x=>x.index);
+}
+
+function getCheckTargetSet(){
+    return new Set(checkTargetIndices);
+}
+
+function startAdCheck(){
+    if(checkRunning||!tableData.length)return;
+    checkTargetIndices=selectCheckTargets();
+    if(!checkTargetIndices.length)return;
+    const targetSet=getCheckTargetSet();
+    const brand=businessName.value.trim();
+    if(brand){
+        brandProgressLine.style.display="block";
+        brandSummaryCard.style.display="block";
+    }else{
+        brandProgressLine.style.display="none";
+        brandSummaryCard.style.display="none";
+    }
+
+    checkRunning=true;
+    checkStartedAt=Date.now();
+    checkTotal=checkTargetIndices.length;
+    checkNormalDone=0;
+    checkBrandDone=0;
+    tableData.forEach((x,index)=>{
+        const selected=targetSet.has(index);
+        x.normal={search:selected?"未確認":"対象外",domains:[],status:selected?"unknown":"excluded"};
+        x.brand={search:brand?(selected?"未確認":"対象外"):"未実行",domains:[],status:brand?(selected?"unknown":"excluded"):"notrun"};
+    });
+
+    checkPanel.style.display="block";
+    checkStartBtn.style.display="none";
+    checkStopBtn.style.display="inline-block";
+    checkStartBtn.disabled=true;
+    extensionStatus.textContent="Chrome拡張機能に接続しています…";
+    updateProgress();
+    renderTable();
+
+    window.postMessage({
+        source:"listing-ad-checker-html",
+        type:"START_CHECK",
+        payload:{
+            media:currentMedia,
+            region:getActiveRegion(),
+            businessName:brand,
+            items:checkTargetIndices.map(index=>{
+                const x=tableData[index];
+                return {
+                    index,
+                    keyword:x.keyword,
+                    targetDomain:x.domain,
+                    normalUrl:generateSearchUrl(x.keyword,getActiveRegion(),""),
+                    brandUrl:brand?generateSearchUrl(x.keyword,getActiveRegion(),brand):""
+                };
+            })
+        }
+    },"*");
+}
+
+function stopAdCheck(){
+    if(!checkRunning)return;
+    window.postMessage({source:"listing-ad-checker-html",type:"STOP_CHECK"},"*");
+    extensionStatus.textContent="停止処理中…";
+}
+
+function receiveCheckResult(p){
+    if(!checkRunning)return;
+    const index=Number(p.index);
+    if(!Number.isInteger(index)||!tableData[index])return;
+    const mode=p.mode==="brand"?"brand":"normal";
+    tableData[index][mode]={
+        search:p.adFound?"広告あり":"広告なし",
+        domains:Array.isArray(p.adDomains)?p.adDomains:[],
+        status:p.status||"unknown"
+    };
+    if(mode==="normal")checkNormalDone++;
+    else checkBrandDone++;
+    currentQuery.textContent="現在："+(p.query||getSearchQuery(tableData[index].keyword,mode==="brand"?businessName.value.trim():""));
+    updateProgress();
+    renderTable();
+    updateSummary();
+}
+
+function receiveCheckError(p){
+    if(!checkRunning)return;
+    const index=Number(p.index);
+    if(Number.isInteger(index)&&tableData[index]){
+        const mode=p.mode==="brand"?"brand":"normal";
+        tableData[index][mode]={search:"判定不能",domains:[],status:"unknown"};
+        if(mode==="normal")checkNormalDone++;
+        else checkBrandDone++;
+        currentQuery.textContent="現在："+(p.query||"");
+        updateProgress();
+        renderTable();
+        updateSummary();
+    }
+    extensionStatus.textContent=p.message||"広告情報を取得できない検索がありました。";
+}
+
+function updateProgress(){
+    normalProgress.textContent=checkNormalDone+" / "+checkTotal+" 件";
+    if(businessName.value.trim())brandProgress.textContent=checkBrandDone+" / "+checkTotal+" 件";
+    const totalModes=businessName.value.trim()?2:1;
+    const done=checkNormalDone+checkBrandDone;
+    progressFill.style.width=Math.min(100,(done/(checkTotal*totalModes))*100)+"%";
+}
+
+function finishAdCheck(stopped=false){
+    checkRunning=false;
+    checkStopBtn.style.display="none";
+    checkStartBtn.style.display="inline-block";
+    checkStartBtn.disabled=false;
+    extensionStatus.textContent=stopped?"チェックを停止しました。":"全キーワードの広告表示チェックが完了しました。";
+    currentQuery.textContent=stopped?"":"チェック完了";
+    updateSummary();
+    renderTable();
+}
+
+function updateSummary(){
+    const normal=countStatuses("normal",true);
+    normalSummary.innerHTML="チェック対象 "+checkTotal+"件<br>🟢 一致："+normal.match+"件<br>🔴 不一致："+normal.mismatch+"件<br>⚪ 広告なし："+normal.none+"件<br>🟠 要確認："+normal.unknown+"件";
+    const brand=businessName.value.trim();
+    if(brand){
+        const b=countStatuses("brand",true);
+        brandSummary.innerHTML="チェック対象 "+checkTotal+"件<br>🟢 一致："+b.match+"件<br>🔴 不一致："+b.mismatch+"件<br>⚪ 広告なし："+b.none+"件<br>🟠 要確認："+b.unknown+"件";
+        const targetSet=getCheckTargetSet();
+        const improved=tableData.filter((x,i)=>targetSet.has(i)&&x.normal.status!=="match"&&x.brand.status==="match").length;
+        const noneToMatch=tableData.filter((x,i)=>targetSet.has(i)&&x.normal.status==="none"&&x.brand.status==="match").length;
+        improvementSummary.style.display="block";
+        improvementSummary.innerHTML="屋号名検索による改善：通常検索で対象広告が一致しなかった "+improved+" 件のうち、屋号名入り検索で対象広告一致になった件数 "+improved+" 件（通常：広告なし → 屋号名入り：対象広告一致 "+noneToMatch+" 件）";
+    }else{
+        improvementSummary.style.display="none";
+    }
+    summary.style.display="block";
+}
+
+function countStatuses(mode,targetsOnly=false){
+    const c={match:0,mismatch:0,none:0,unknown:0};
+    const targetSet=targetsOnly?getCheckTargetSet():null;
+    tableData.forEach((x,i)=>{
+        if(targetSet&&!targetSet.has(i))return;
+        if(c[x[mode].status]!==undefined)c[x[mode].status]++;
+    });
+    return c;
 }
 
 function sortTable(columnIndex,type){
-    const keys=currentMedia==="Yahoo"
-        ?["no","campaign","adGroup","keyword","matchType","domain","schedule"]
-        :["no","campaign","adGroup","keyword","matchType","domain","schedule","qualityScore"];
-
-    const key=keys[columnIndex];
-
+    const hasBrand=businessName.value.trim()!=="";
+    const qualityOffset=currentMedia==="Yahoo"?-1:0;
+    const map=currentMedia==="Yahoo"
+        ?["no","campaign","adGroup","keyword","matchType","domain","schedule","normal.search","normal.domains","normal.status","brand.search","brand.domains","brand.status"]
+        :["no","campaign","adGroup","keyword","matchType","domain","schedule","qualityScore","normal.search","normal.domains","normal.status","brand.search","brand.domains","brand.status"];
+    let key=map[columnIndex];
     if(!key)return;
-
+    if((!hasBrand&&columnIndex>=11)||(!hasBrand&&columnIndex>=10&&currentMedia==="Yahoo"))return;
     sortDirections[columnIndex]=!sortDirections[columnIndex];
-
     const asc=sortDirections[columnIndex];
-
+    const get=v=>key.split(".").reduce((o,k)=>o?o[k]:undefined,v);
     tableData.sort((a,b)=>{
-        let va,vb;
-
-        if(columnIndex===0){
-            va=a._no??0;
-            vb=b._no??0;
-        }else{
-            va=a[key]||"";
-            vb=b[key]||"";
-        }
-
+        let va=columnIndex===0?a._no??0:get(a),vb=columnIndex===0?b._no??0:get(b);
+        if(Array.isArray(va))va=va.join(" / ");
+        if(Array.isArray(vb))vb=vb.join(" / ");
         if(type==="number"){
-            const na=va===""?-1:Number(va);
-            const nb=vb===""?-1:Number(vb);
+            const na=va===""||va==null?-1:Number(va),nb=vb===""||vb==null?-1:Number(vb);
             return asc?na-nb:nb-na;
         }
-
-        return asc
-            ?String(va).localeCompare(String(vb),"ja")
-            :String(vb).localeCompare(String(va),"ja");
+        return asc?String(va??"").localeCompare(String(vb??""),"ja"):String(vb??"").localeCompare(String(va??""),"ja");
     });
-
     renderTable();
 }
 
 function escapeHtml(str){
-    return String(str??"")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;");
+    return String(str??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function updateSearchLinks(){renderTable()}
+
 function resetTool(){
-    tableData=[];
-    detectedRegionsList=[];
-    currentMedia="Google";
-    sortDirections={};
-
+    if(checkRunning)stopAdCheck();
+    tableData=[];detectedRegionsList=[];currentMedia="Google";sortDirections={};checkTargetIndices=[];
     regionSelect.innerHTML='<option value="">-- 設定された地域から選択 --</option>';
-    regionInput.value="";
-
-    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#888">ファイルが読み込まれていません</td></tr>';
-
-    countInfo.textContent="";
-    infoBox.style.display="none";
-    mediaBadge.style.display="none";
-    exportBtn.style.display="none";
-    resetBtn.style.display="none";
-    dropZone.style.display="block";
-    fileName.textContent="";
-    fileInput.value="";
-    qualityHeader.style.display="table-cell";
-
+    regionInput.value="";businessName.value="";
+    tbody.innerHTML='<tr><td colspan="15" style="text-align:center;color:#888">ファイルが読み込まれていません</td></tr>';
+    countInfo.textContent="";checkTargetInfo.textContent="";infoBox.style.display="none";mediaBadge.style.display="none";
+    exportBtn.style.display="none";resetBtn.style.display="none";checkStartBtn.style.display="none";checkStopBtn.style.display="none";
+    checkPanel.style.display="none";summary.style.display="none";dropZone.style.display="block";fileName.textContent="";
+    fileInput.value="";qualityHeader.style.display="table-cell";
+    brandProgressLine.style.display="none";brandSummaryCard.style.display="none";
     window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function exportMobileHtml(){
     const currentRegion=getActiveRegion();
     const regionDisplay=currentRegion||(currentMedia==="Yahoo"?"日本全国":"地域指定なし");
-    const qualityHeaderHtml=currentMedia==="Yahoo"
-        ?""
-        :'<th style="width:75px" class="center-text">品質スコア</th>';
+    const hasBrand=businessName.value.trim()!=="";
+    const qualityHeaderHtml=currentMedia==="Yahoo"?"":'<th style="width:75px" class="center-text">品質スコア</th>';
 
     let content='<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>リスティング広告 検索リンク一覧</title><style>';
-
-    content+='body{font-family:Arial,"Noto Sans JP",sans-serif;background:#f4f6f9;margin:0;padding:15px;color:#333}.container{max-width:1350px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);overflow-x:auto}h1{font-size:18px;color:#1a73e8}.setting-box{padding:10px;background:#f8f9fa;border-radius:4px;font-size:14px}.count-info{margin-top:10px;font-weight:bold;color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f1f3f4}a.search-link{color:#1a73e8;text-decoration:none;font-weight:bold;white-space:nowrap}.center-text{text-align:center}</style></head><body><div class="container">';
-
-    content+='<h1>リスティング広告 検索リンク一覧（'+
-        escapeHtml(currentMedia==="Yahoo"?"Yahoo!広告":"Google広告")+
-        '）</h1>';
-
-    content+='<div class="setting-box"><strong>設定地域：</strong>'+
-        escapeHtml(regionDisplay)+
-        '</div>';
-
-    content+='<div class="count-info">抽出された件数: '+
-        tableData.length+
-        ' 件</div>';
-
-    content+='<table><thead><tr><th>No.</th><th>キャンペーン名</th><th>広告グループ名</th><th>キーワード</th><th>マッチタイプ</th><th>ランディング先ドメイン</th><th>配信スケジュール</th>'+
-        qualityHeaderHtml+
-        '<th>アクション</th></tr></thead><tbody>';
+    content+='body{font-family:Arial,"Noto Sans JP",sans-serif;background:#f4f6f9;margin:0;padding:15px;color:#333}.container{max-width:1500px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);overflow-x:auto}h1{font-size:18px;color:#1a73e8}.setting-box{padding:10px;background:#f8f9fa;border-radius:4px;font-size:14px}.count-info{margin-top:10px;font-weight:bold;color:#555;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px}th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}th{background:#f1f3f4}a.search-link{color:#1a73e8;text-decoration:none;font-weight:bold;white-space:nowrap}.center-text{text-align:center}.ad-domains{line-height:1.5;word-break:break-word}.domain-details{display:inline-block}.domain-details summary{cursor:pointer;color:#1a73e8;font-weight:bold;user-select:none}.domain-details summary:hover{text-decoration:underline}.domain-list{margin-top:6px;padding:7px 10px;background:#f8f9fa;border-radius:4px;line-height:1.5;word-break:break-word}.status-match{color:#188038;font-weight:bold}.status-mismatch{color:#d93025;font-weight:bold}.status-none{color:#777;font-weight:bold}.status-unknown{color:#e37400;font-weight:bold}</style></head><body><div class="container">';
+    content+='<h1>リスティング広告 検索リンク一覧（'+escapeHtml(currentMedia==="Yahoo"?"Yahoo!広告":"Google広告")+'）</h1>';
+    content+='<div class="setting-box"><strong>設定地域：</strong>'+escapeHtml(regionDisplay);
+    if(hasBrand)content+='　<strong>屋号名：</strong>'+escapeHtml(businessName.value.trim());
+    content+='</div>';
+    content+='<div class="count-info">抽出された件数: '+tableData.length+' 件</div>';
+    content+='<table><thead><tr><th>No.</th><th>キャンペーン名</th><th>広告グループ名</th><th>キーワード</th><th>マッチタイプ</th><th>ランディング先ドメイン</th><th>配信スケジュール</th>'+qualityHeaderHtml+'<th>通常検索</th><th>通常広告ドメイン</th><th>通常判定</th>';
+    if(hasBrand)content+='<th>屋号名検索</th><th>屋号名広告ドメイン</th><th>屋号名判定</th>';
+    content+='<th>アクション</th></tr></thead><tbody>';
 
     tableData.forEach((item,index)=>{
-        const url=generateSearchUrl(item.keyword,currentRegion);
-
-        content+='<tr><td>'+
-            (index+1)+
-            '</td><td>'+
-            escapeHtml(item.campaign)+
-            '</td><td>'+
-            escapeHtml(item.adGroup)+
-            '</td><td>'+
-            escapeHtml(item.keyword)+
-            '</td><td>'+
-            escapeHtml(item.matchType)+
-            '</td><td>'+
-            escapeHtml(item.domain)+
-            '</td><td>'+
-            escapeHtml(item.schedule)+
-            '</td>';
-
-        if(currentMedia!=="Yahoo"){
-            content+='<td class="center-text">'+
-                escapeHtml(item.qualityScore)+
-                '</td>';
-        }
-
-        content+='<td><a href="'+
-            url+
-            '" target="_blank" rel="noopener noreferrer" class="search-link">検索リンクを開く</a></td></tr>';
+        const normalUrl=generateSearchUrl(item.keyword,currentRegion,"");
+        const brandUrl=hasBrand?generateSearchUrl(item.keyword,currentRegion,businessName.value.trim()):"";
+        const url=(item.normal.status==="match"||!hasBrand||item.brand.status!=="match")?normalUrl:brandUrl;
+        const makeDomainDetails=(domains)=>domains.length?'<details class="domain-details"><summary>表示（'+domains.length+'件）</summary><div class="domain-list">'+domains.map(escapeHtml).join("<br>")+'</div></details>':"―";
+        content+='<tr><td>'+(index+1)+'</td><td>'+escapeHtml(item.campaign)+'</td><td>'+escapeHtml(item.adGroup)+'</td><td>'+escapeHtml(item.keyword)+'</td><td>'+escapeHtml(item.matchType)+'</td><td>'+escapeHtml(item.domain)+'</td><td>'+escapeHtml(item.schedule)+'</td>';
+        if(currentMedia!=="Yahoo")content+='<td class="center-text">'+escapeHtml(item.qualityScore)+'</td>';
+        content+='<td>'+escapeHtml(item.normal.search||"未確認")+'</td><td class="ad-domains">'+makeDomainDetails(item.normal.domains)+'</td><td>'+statusLabel(item.normal.status)+'</td>';
+        if(hasBrand)content+='<td>'+escapeHtml(item.brand.search||"未実行")+'</td><td class="ad-domains">'+makeDomainDetails(item.brand.domains)+'</td><td>'+statusLabel(item.brand.status)+'</td>';
+        content+='<td><a href="'+url+'" target="_blank" rel="noopener noreferrer" class="search-link">検索リンクを開く</a></td></tr>';
     });
-
     content+='</tbody></table></div></body></html>';
 
-    const blob=new Blob([content],{
-        type:"text/html;charset=utf-8"
-    });
-
+    const blob=new Blob([content],{type:"text/html;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-
-    a.href=url;
-
-    a.download=currentMedia==="Yahoo"
-        ?"Yahoo_search_links_mobile.html"
-        :"Google_search_links_mobile.html";
-
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.href=url;a.download=currentMedia==="Yahoo"?"Yahoo_search_links_mobile.html":"Google_search_links_mobile.html";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
+
+businessName.addEventListener("input",()=>{if(!checkRunning)renderTable()});
 </script>
 </body>
 </html>
